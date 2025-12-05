@@ -1,0 +1,26 @@
+# Compiled files
+*.class
+*.jar
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Build
+out/
+target/
+bin/
+
+# Data files
+*.dat
+*.txt
+
+# Reports (optional)
+*.pdf
+*.docx
+
+# System
+.DS_Store
+Thumbs.db
+EOF
