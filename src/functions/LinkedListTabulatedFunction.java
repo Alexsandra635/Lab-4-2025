@@ -1,12 +1,13 @@
 package functions;
 
-import java.io.Serializable;
+import java.io.*;
 
-public class LinkedListTabulatedFunction implements TabulatedFunction, Serializable {
+public class LinkedListTabulatedFunction implements TabulatedFunction, Externalizable {
     private static final long serialVersionUID = 2L;
     private static final double EPSILON = 1e-9;
 
-    static class FunctionNode implements Serializable {
+    // Изменение: убрал implements Serializable
+    static class FunctionNode {
         private FunctionPoint point;
         private FunctionNode prev;
         private FunctionNode next;
@@ -48,6 +49,11 @@ public class LinkedListTabulatedFunction implements TabulatedFunction, Serializa
     private int size;
     private transient FunctionNode lastAccessedNode;
     private transient int lastAccessedIndex;
+
+    // Конструктор без параметров для Externalizable
+    public LinkedListTabulatedFunction() {
+        initializeList();
+    }
 
     private void initializeList() {
         head = new FunctionNode(new FunctionPoint(0, 0));
@@ -354,9 +360,9 @@ public class LinkedListTabulatedFunction implements TabulatedFunction, Serializa
         getNodeByIndex(insertIndex).setPoint(new FunctionPoint(point));
     }
 
-    // Для стандартной сериализации (не Externalizable)
-    private void writeObject(java.io.ObjectOutputStream out) throws java.io.IOException {
-        out.defaultWriteObject();
+    // Методы Externalizable
+    @Override
+    public void writeExternal(ObjectOutput out) throws IOException {
         out.writeInt(size);
 
         FunctionNode current = head.getNext();
@@ -367,12 +373,14 @@ public class LinkedListTabulatedFunction implements TabulatedFunction, Serializa
         }
     }
 
-    private void readObject(java.io.ObjectInputStream in)
-            throws java.io.IOException, ClassNotFoundException {
-        in.defaultReadObject();
+    @Override
+    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
         int savedSize = in.readInt();
 
+        // Очищаем список перед восстановлением
         initializeList();
+
+        // Восстанавливаем точки
         for (int i = 0; i < savedSize; i++) {
             double x = in.readDouble();
             double y = in.readDouble();

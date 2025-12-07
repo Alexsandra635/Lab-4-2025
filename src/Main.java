@@ -1,3 +1,4 @@
+
 import functions.*;
 import functions.basic.*;
 import functions.meta.*;
@@ -9,6 +10,32 @@ public class Main {
         try {
             System.out.println("=== ЛАБОРАТОРНАЯ РАБОТА №4 ===");
             System.out.println("=== ТЕСТИРОВАНИЕ ВСЕХ ЗАДАНИЙ ===\n");
+
+            // НОВАЯ ПРОВЕРКА: ln(e^0) = 0
+            System.out.println("=== ПРОВЕРКА ln(e^0) = 0 ===");
+            Function exp = new Exp();
+            Function log = new Log(Math.E);
+
+            System.out.println("1. Проверка exp(0):");
+            double exp0 = exp.getFunctionValue(0);
+            System.out.println("   exp(0) = " + exp0 + " (ожидается 1.0)");
+
+            System.out.println("\n2. Проверка ln(1):");
+            double log1 = log.getFunctionValue(1.0);
+            System.out.println("   ln(1) = " + log1 + " (ожидается 0.0)");
+
+            System.out.println("\n3. Проверка ln(e^0):");
+            Function logOfExp = Functions.composition(log, exp);
+            double lnExp0 = logOfExp.getFunctionValue(0);
+            System.out.println("   ln(e^0) = " + lnExp0 + " (ожидается 0.0)");
+
+            if (Math.abs(lnExp0) < 1e-10) {
+                System.out.println("   ✓ УСПЕХ: ln(e^0) = 0");
+            } else {
+                System.out.println("   ✗ ОШИБКА: ln(e^0) != 0");
+            }
+
+            System.out.println("\n" + "=".repeat(50) + "\n");
 
             // Задание 3: Тестирование базовых функций
             testBasicFunctions();
@@ -303,140 +330,164 @@ public class Main {
         Function log = new Log(Math.E);
         Function logOfExp = Functions.composition(log, exp);
 
-        // Проверяем значения от 0 до 10
+        System.out.println("   Проверка аналитической функции ln(e^x):");
         for (int i = 0; i <= 10; i++) {
             double x = i;
             double y = logOfExp.getFunctionValue(x);
-            System.out.printf("   x=%.1f: ln(e^%.1f) = %.10f (ожидается %.1f)%n",
-                    x, x, y, x);
-            // Проверяем, что значение близко к ожидаемому
-            if (Math.abs(y - x) > 1e-9) {
-                System.out.printf("   ВНИМАНИЕ: разница = %.10f%n", Math.abs(y - x));
-            }
+            System.out.printf("   x=%2d: ln(e^%d) = %.10f (ожидается %d.0)%n", i, i, y, i);
         }
 
-        // Создаем функцию для сериализации (композиция ln(e^x) = x)
+        // Создание табулированного аналога ln(e^x)
+        System.out.println("\n2. Создание табулированного аналога ln(e^x) на [0, 10] с 11 точками:");
         TabulatedFunction tabLogExp = TabulatedFunctions.tabulate(logOfExp, 0, 10, 11);
-
-        System.out.println("\n2. Функция для сериализации: ln(e^x) = x");
         System.out.println("   Количество точек: " + tabLogExp.getPointsCount());
-        System.out.println("   Все точки оригинала:");
+        System.out.println("   Точки функции:");
         for (int i = 0; i < tabLogExp.getPointsCount(); i++) {
-            System.out.printf("   Точка %d: x=%.3f, y=%.6f%n",
+            System.out.printf("   Точка %d: x=%.1f, y=%.6f%n",
                     i, tabLogExp.getPointX(i), tabLogExp.getPointY(i));
         }
 
-        // Сериализация с Serializable
-        System.out.println("\n3. Сериализация с использованием Serializable:");
-        try (ObjectOutputStream oos = new ObjectOutputStream(
-                new FileOutputStream("function_serializable.dat"))) {
-            oos.writeObject(tabLogExp);
-        }
-        File serializableFile = new File("function_serializable.dat");
-        System.out.println("   Записано в: function_serializable.dat");
-        System.out.println("   Размер файла: " + serializableFile.length() + " байт");
+        // 2. Сравнение Serializable vs Externalizable
+        System.out.println("\n3. Сравнение Serializable vs Externalizable:");
 
-        // Десериализация
-        TabulatedFunction deserialized;
-        try (ObjectInputStream ois = new ObjectInputStream(
-                new FileInputStream("function_serializable.dat"))) {
-            deserialized = (TabulatedFunction) ois.readObject();
-        }
-
-        System.out.println("\n4. Проверка после десериализации Serializable:");
-        System.out.println("   Количество точек: " + deserialized.getPointsCount());
-        System.out.println("   Все точки после десериализации:");
-        for (int i = 0; i < deserialized.getPointsCount(); i++) {
-            System.out.printf("   Точка %d: x=%.3f, y=%.6f%n",
-                    i, deserialized.getPointX(i), deserialized.getPointY(i));
-        }
-
-        // Сравнение оригинальной и десериализованной функции
-        System.out.println("\n5. Сравнение оригинальной и десериализованной функции:");
-        boolean serializableMatch = compareFunctions(tabLogExp, deserialized);
-        System.out.println("   Функции идентичны: " + serializableMatch);
-
-        if (!serializableMatch) {
-            System.out.println("   Расхождения:");
-            for (int i = 0; i < tabLogExp.getPointsCount(); i++) {
-                double origX = tabLogExp.getPointX(i);
-                double origY = tabLogExp.getPointY(i);
-                double readX = deserialized.getPointX(i);
-                double readY = deserialized.getPointY(i);
-
-                if (Math.abs(origX - readX) > 1e-9 || Math.abs(origY - readY) > 1e-9) {
-                    System.out.printf("   Точка %d: оригинал (%.6f, %.6f) vs прочитано (%.6f, %.6f)%n",
-                            i, origX, origY, readX, readY);
-                }
-            }
-        }
-
-        // Создаем Externalizable версию (такой же набор точек для корректного сравнения)
-        System.out.println("\n6. Создание Externalizable версии:");
+        // Создаем одинаковые функции для обоих реализаций
         FunctionPoint[] points = new FunctionPoint[11];
         for (int i = 0; i <= 10; i++) {
             double x = i;
-            double y = logOfExp.getFunctionValue(x); // тоже ln(e^x) = x
+            double y = logOfExp.getFunctionValue(x); // ln(e^x) = x
             points[i] = new FunctionPoint(x, y);
         }
-        LinkedListTabulatedFunctionExternalizable externalizableFunc =
-                new LinkedListTabulatedFunctionExternalizable(points);
 
-        System.out.println("   Количество точек: " + externalizableFunc.getPointsCount());
-        System.out.println("   Все точки оригинала Externalizable:");
-        for (int i = 0; i < externalizableFunc.getPointsCount(); i++) {
-            System.out.printf("   Точка %d: x=%.1f, y=%.1f%n",
-                    i, externalizableFunc.getPointX(i), externalizableFunc.getPointY(i));
-        }
+        // ArrayTabulatedFunction - Serializable
+        ArrayTabulatedFunction arrayFunc = new ArrayTabulatedFunction(points);
 
-        // Сериализация с Externalizable
+        // LinkedListTabulatedFunction - Externalizable
+        LinkedListTabulatedFunction linkedListFunc = new LinkedListTabulatedFunction(points);
+
+        System.out.println("\n4. Сериализация ArrayTabulatedFunction (Serializable):");
+        File arrayFile = new File("array_serializable.dat");
         try (ObjectOutputStream oos = new ObjectOutputStream(
-                new FileOutputStream("function_externalizable.dat"))) {
-            oos.writeObject(externalizableFunc);
+                new FileOutputStream(arrayFile))) {
+            oos.writeObject(arrayFunc);
         }
-        File externalizableFile = new File("function_externalizable.dat");
-        System.out.println("\n7. Сериализация Externalizable:");
-        System.out.println("   Записано в: function_externalizable.dat");
-        System.out.println("   Размер файла: " + externalizableFile.length() + " байт");
+        System.out.println("   Записано в: array_serializable.dat");
+        System.out.println("   Размер файла: " + arrayFile.length() + " байт");
 
-        // Десериализация
-        LinkedListTabulatedFunctionExternalizable deserializedExternal;
+        System.out.println("\n5. Сериализация LinkedListTabulatedFunction (Externalizable):");
+        File linkedListFile = new File("linkedlist_externalizable.dat");
+        try (ObjectOutputStream oos = new ObjectOutputStream(
+                new FileOutputStream(linkedListFile))) {
+            oos.writeObject(linkedListFunc);
+        }
+        System.out.println("   Записано в: linkedlist_externalizable.dat");
+        System.out.println("   Размер файла: " + linkedListFile.length() + " байт");
+
+        // Просмотр содержимого файлов (hex-дамп)
+        System.out.println("\n6. Содержимое файлов (первые 64 байта):");
+
+        System.out.println("   array_serializable.dat (Serializable):");
+        printHexDump("array_serializable.dat", 64);
+
+        System.out.println("\n   linkedlist_externalizable.dat (Externalizable):");
+        printHexDump("linkedlist_externalizable.dat", 64);
+
+        // Десериализация и проверка
+        System.out.println("\n7. Десериализация и проверка:");
+
+        ArrayTabulatedFunction arrayDeserialized;
         try (ObjectInputStream ois = new ObjectInputStream(
-                new FileInputStream("function_externalizable.dat"))) {
-            deserializedExternal = (LinkedListTabulatedFunctionExternalizable) ois.readObject();
+                new FileInputStream("array_serializable.dat"))) {
+            arrayDeserialized = (ArrayTabulatedFunction) ois.readObject();
+        }
+        System.out.println("   ArrayTabulatedFunction восстановлен, точек: " + arrayDeserialized.getPointsCount());
+
+        LinkedListTabulatedFunction linkedListDeserialized;
+        try (ObjectInputStream ois = new ObjectInputStream(
+                new FileInputStream("linkedlist_externalizable.dat"))) {
+            linkedListDeserialized = (LinkedListTabulatedFunction) ois.readObject();
+        }
+        System.out.println("   LinkedListTabulatedFunction восстановлен, точек: " + linkedListDeserialized.getPointsCount());
+
+        // Проверка значений исходной и считанной функции
+        System.out.println("\n8. Сравнение значений исходной и считанной функции (шаг 1):");
+        System.out.println("   x | Исходная | Serializable | Externalizable | Разница S | Разница E");
+        System.out.println("   " + "-".repeat(70));
+
+        for (int i = 0; i <= 10; i++) {
+            double x = i;
+            double original = tabLogExp.getFunctionValue(x);
+            double serialized = arrayDeserialized.getFunctionValue(x);
+            double externalized = linkedListDeserialized.getFunctionValue(x);
+            double diffS = Math.abs(original - serialized);
+            double diffE = Math.abs(original - externalized);
+
+            System.out.printf("   %2.0f | %8.6f | %11.6f | %13.6f | %9.6f | %9.6f%n",
+                    x, original, serialized, externalized, diffS, diffE);
         }
 
-        System.out.println("\n8. Проверка после десериализации Externalizable:");
-        System.out.println("   Количество точек: " + deserializedExternal.getPointsCount());
-        System.out.println("   Все точки после десериализации:");
-        for (int i = 0; i < deserializedExternal.getPointsCount(); i++) {
-            System.out.printf("   Точка %d: x=%.1f, y=%.1f%n",
-                    i, deserializedExternal.getPointX(i), deserializedExternal.getPointY(i));
+        // Проверка тождества ln(e^x) = x после десериализации
+        System.out.println("\n9. Проверка тождества ln(e^x) = x после десериализации:");
+        for (int i = 0; i <= 10; i++) {
+            double x = i;
+            double analytic = logOfExp.getFunctionValue(x);      // аналитическое ln(e^x)
+            double tabulated = tabLogExp.getFunctionValue(x);    // исходная табулированная
+            double serialized = arrayDeserialized.getFunctionValue(x); // после Serializable
+            double externalized = linkedListDeserialized.getFunctionValue(x); // после Externalizable
+
+            System.out.printf("   x=%2d: аналит.=%.6f, табул.=%.6f, сериал.=%.6f, внеш.=%.6f%n",
+                    i, analytic, tabulated, serialized, externalized);
         }
 
-        // Проверка совпадения Externalizable
-        System.out.println("\n9. Проверка совпадения Externalizable:");
-        boolean externalizableMatch = compareFunctions(externalizableFunc, deserializedExternal);
-        System.out.println("   Функции идентичны: " + externalizableMatch);
 
-        System.out.println("\n10. Сравнение размеров файлов:");
-        System.out.println("   Serializable: " + serializableFile.length() + " байт");
-        System.out.println("   Externalizable: " + externalizableFile.length() + " байт");
-        System.out.println("   Разница: " +
-                Math.abs(serializableFile.length() - externalizableFile.length()) + " байт");
+        // Удаление временных файлов
+        System.out.println("\n" + "=".repeat(80));
+        System.out.println("10. Очистка временных файлов:");
+        String[] filesToDelete = {
+                "array_serializable.dat",
+                "linkedlist_externalizable.dat",
+                "function_serializable.dat",
+                "function_externalizable.dat",
+                "array_func_serializable.dat",
+                "linkedlist_func_externalizable.dat"
+        };
 
-        System.out.println("\n11. Объяснение переопределения writeObject/readObject:");
-        System.out.println("    В LinkedListTabulatedFunction методы writeObject/readObject");
-        System.out.println("    переопределены для:");
-        System.out.println("    - Контроля над процессом сериализации");
-        System.out.println("    - Игнорирования transient полей (lastAccessedNode, lastAccessedIndex)");
-        System.out.println("    - Восстановления циклической структуры списка");
-        System.out.println("    - Избежания проблем с циклическими ссылками");
-        System.out.println("    - Сохранения только данных (координат точек), не структуры списка");
-        System.out.println("\n    В Externalizable версии:");
-        System.out.println("    - Полный контроль над форматом данных");
-        System.out.println("    - Более эффективное использование места");
-        System.out.println("    - Возможность обработки разных версий формата");
+        for (String fileName : filesToDelete) {
+            File file = new File(fileName);
+            if (file.exists()) {
+                file.delete();
+                System.out.println("   Удален: " + fileName);
+            }
+        }
+    }
+
+    // Новый вспомогательный метод для hex-дампа
+    private static void printHexDump(String fileName, int bytesToShow) throws IOException {
+        try (FileInputStream fis = new FileInputStream(fileName)) {
+            byte[] buffer = new byte[bytesToShow];
+            int bytesRead = fis.read(buffer);
+
+            System.out.print("   ");
+            for (int i = 0; i < bytesRead; i++) {
+                System.out.printf("%02X ", buffer[i]);
+                if ((i + 1) % 16 == 0 && i < bytesRead - 1) {
+                    System.out.print("\n   ");
+                } else if ((i + 1) % 8 == 0) {
+                    System.out.print(" ");
+                }
+            }
+            if (bytesRead < bytesToShow) {
+                System.out.println(" (файл меньше " + bytesToShow + " байт)");
+            }
+            System.out.println();
+
+            // Дополнительная информация о структуре файла
+            System.out.print("   Структура: ");
+            if (fileName.contains("serializable")) {
+                System.out.println("Заголовок Serializable + поля класса + данные массива");
+            } else {
+                System.out.println("Размер списка (int) + пары координат (double, double)");
+            }
+        }
     }
 
     private static void printFunction(TabulatedFunction func) {
@@ -458,6 +509,8 @@ public class Main {
     }
 
     private static String format(double value) {
+        if (Double.isNaN(value)) return "NaN";
+        if (Double.isInfinite(value)) return value > 0 ? "∞" : "-∞";
         DecimalFormat df = new DecimalFormat("0.######");
         return df.format(value);
     }
